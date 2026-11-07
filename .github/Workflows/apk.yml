@@ -1,0 +1,56 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Créer le projet Android
+        run: npm run android:add
+
+      - name: Permissions (internet, localisation) et icône
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          sed -i 's#<application#<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application#' "$M"
+          for d in mipmap-mdpi:48 mipmap-hdpi:72 mipmap-xhdpi:96 mipmap-xxhdpi:144 mipmap-xxxhdpi:192; do
+            n=${d%%:*}; s=${d##*:}
+            python3 - "$n" "$s" <<'PY'
+          import sys
+          from PIL import Image
+          n,s=sys.argv[1],int(sys.argv[2])
+          im=Image.open('assets/icons/icon-512.png').resize((s,s))
+          for f in ('ic_launcher.png','ic_launcher_round.png','ic_launcher_foreground.png'):
+              im.save(f'android/app/src/main/res/{n}/{f}')
+          PY
+          done
+        continue-on-error: true
+
+      - name: Synchroniser
+        run: npm run android:sync
+
+      - name: Compiler l'APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mon-rdv-medical-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
