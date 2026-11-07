@@ -1,0 +1,7 @@
+{
+  "appId": "com.monrdvmedical.app",
+  "appName": "Mon RDV Médical",
+  "webDir": "www",
+  "backgroundColor": "#009fe3",
+  "android": { "allowMixedContent": false }
+}
